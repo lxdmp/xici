@@ -8,12 +8,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedList;
 
 import org.apache.http.*;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
@@ -27,9 +29,11 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.entity.mime.content.FileBody;
 import org.apache.http.entity.mime.content.StringBody;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.util.EntityUtils;
 
 public class HttpTerminal
@@ -43,6 +47,10 @@ public class HttpTerminal
 	private PoolingHttpClientConnectionManager pool; // 连接管理器
 	private RequestConfig requestConfig; // 请求配置
 	private String usrAgent = null;
+	
+	private Proxy fixedHttpProxy = null, fixedHttpsProxy = null;
+	private LinkedList<Proxy> temporaryHttpProxy = new LinkedList<Proxy>();
+	private LinkedList<Proxy> temporaryHttpsProxy = new LinkedList<Proxy>();
 
 	public HttpTerminal()
 	{
@@ -80,14 +88,81 @@ public class HttpTerminal
 		}
 	}
 
-	private CloseableHttpClient getHttpClient()
+	private CloseableHttpClient getHttpClient(HttpRequestBase req)
 	{
-		CloseableHttpClient httpClient = HttpClients.custom()
-			.setConnectionManager(this.pool) // 设置连接池管理
-			.setDefaultRequestConfig(this.requestConfig) // 设置请求配置
-			.setRetryHandler(new DefaultHttpRequestRetryHandler(0, false)) // 设置重试次数
-			.build();
-		return httpClient;
+		HttpClientBuilder builder = HttpClients.custom();
+		builder.setConnectionManager(this.pool); // 设置连接池管理
+		builder.setDefaultRequestConfig(this.requestConfig); // 设置请求配置
+		builder.setRetryHandler(new DefaultHttpRequestRetryHandler(0,false));// 设置重试次数
+		loadProxy(builder, req.getURI().getScheme());
+		return builder.build();
+	}
+
+	private void loadProxyImpl(HttpClientBuilder builder, String scheme, Proxy proxy)
+	{
+		builder.setRoutePlanner(new DefaultProxyRoutePlanner(
+			new HttpHost(proxy.getIp(), proxy.getPort(), scheme)
+		));
+	}
+
+	private void loadSpecificProxy(HttpClientBuilder builder, String scheme,
+			Proxy specificFixedProxy, LinkedList<Proxy> specificTemporaryProxy)
+	{
+		if(!specificTemporaryProxy.isEmpty())
+			this.loadProxyImpl(builder, scheme, specificTemporaryProxy.pollFirst());
+		else if(specificFixedProxy!=null)
+			this.loadProxyImpl(builder, scheme, specificFixedProxy);
+	}
+
+	private void loadProxy(HttpClientBuilder builder, String scheme)
+	{
+		//System.out.println("scheme : "+scheme);
+		if(scheme.compareTo("http")==0)
+			loadSpecificProxy(builder, scheme, fixedHttpProxy, temporaryHttpProxy);
+		else if(scheme.compareTo("https")==0)
+			loadSpecificProxy(builder, scheme, fixedHttpsProxy, temporaryHttpsProxy);
+	}
+	
+	public LinkedList<Proxy> getTemporaryProxy(String scheme)
+	{
+		if(scheme.compareTo("http")==0)
+			return temporaryHttpProxy;
+		else if(scheme.compareTo("https")==0)
+			return temporaryHttpsProxy;
+		return null;
+	}
+
+	public void addTemporaryProxy(Proxy proxy, String scheme)
+	{
+		if(scheme.compareTo("http")==0)
+			temporaryHttpProxy.addLast(proxy);
+		else if(scheme.compareTo("https")==0)
+			temporaryHttpsProxy.addLast(proxy);
+	}
+
+	public void setFixedProxy(Proxy proxy, String scheme)
+	{
+		if(scheme.compareTo("http")==0)
+			fixedHttpProxy = proxy;
+		else if(scheme.compareTo("https")==0)
+			fixedHttpsProxy = proxy;
+	}
+
+	public void resetFixedProxy(Proxy proxy, String scheme)
+	{
+		if(scheme.compareTo("http")==0)
+			fixedHttpProxy = null;
+		else if(scheme.compareTo("https")==0)
+			fixedHttpsProxy = null;
+	}
+
+	public Proxy getFixedProxy(String scheme)
+	{
+		if(scheme.compareTo("http")==0)
+			return fixedHttpProxy;
+		else if(scheme.compareTo("https")==0)
+			return fixedHttpsProxy;
+		return null;
 	}
 
 	void setUsrAgent(String agent)
@@ -107,7 +182,7 @@ public class HttpTerminal
 		String responseContent = null;
 		try {
 			// 创建默认的httpClient实例.
-			httpClient = getHttpClient();
+			httpClient = getHttpClient(httpPost);
 			// 配置请求信息
 			httpPost.setConfig(requestConfig);
 			// 执行请求
@@ -161,7 +236,7 @@ public class HttpTerminal
 		String responseContent = null;
 		try{
 			// 创建默认的httpClient实例.
-			httpClient = getHttpClient();
+			httpClient = getHttpClient(httpGet);
 			// 配置请求信息
 			httpGet.setConfig(requestConfig);
 			// 执行请求
