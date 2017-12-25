@@ -102,12 +102,11 @@ public class XiciCrawler
 			if(proxy_node!=proxy_nodes.first())
 			{
 				Proxy new_proxy = this.parseProxyNode(proxy_node);
-				System.out.println(new_proxy);
 				ret.addLast(new_proxy);
 			}
 		}
 
-		if(ret.size()<=0)
+		if(ret.isEmpty())
 			return null;
 		else
 			return ret;
@@ -120,6 +119,7 @@ public class XiciCrawler
 		if(proxy_used!=null)
 			terminal.addTemporaryProxy(proxy_used);
 
+		System.out.println(url);
 		String res = terminal.sendHttpGet(url);
 		return this.parsePage(res);
 	}
@@ -136,21 +136,34 @@ public class XiciCrawler
 		Collection<Proxy> page_result = this.nextPage();
 	}
 
-	/*
-	public Collection<Proxy> getWebPages(Date update_after_this_stamp) throws Exception
+	public Collection<Proxy> getWebPages(Date validate_after_this_stamp) throws Exception
 	{
-		Collection<Proxy> ret = new LikedList<Proxy>();
+		Collection<Proxy> ret = new LinkedList<Proxy>();
+		boolean timeout = false;
 
 		do{
 			Collection<Proxy> page_result = this.nextPage();
-		}while(0);
+			if(page_result==null || page_result.isEmpty())
+				break;
+			Iterator<Proxy> iter = page_result.iterator();
+			while(iter.hasNext())
+			{
+				Proxy proxy = iter.next();
+				if(proxy.getLastValidateTime().before(validate_after_this_stamp))
+				{
+					timeout = true;
+					break;
+				}
+				ret.add(proxy);
+				System.out.println(proxy);
+			}
+		}while(!timeout);
 
-		if(ret.size()<=0)
+		if(ret.isEmpty())
 			return null;
 		else
 			return ret;
 	}
-	*/
 
 	/*
 	 * 获取Proxy对象.
@@ -162,7 +175,7 @@ public class XiciCrawler
 
 	private Proxy getRandomProxy(ConcurrentMap<Proxy, Date> buf)
 	{
-		if(buf.size()<=0)
+		if(buf.isEmpty())
 			return null;
 		int idx = getRandomNum(0, http_buf.size()-1);
 		Iterator<Proxy> iter = buf.keySet().iterator();

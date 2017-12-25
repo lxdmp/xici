@@ -92,6 +92,7 @@ public class HttpTerminal
 	{
 		HttpClientBuilder builder = HttpClients.custom();
 		builder.setConnectionManager(this.pool); // 设置连接池管理
+		builder.setConnectionManagerShared(true);
 		builder.setDefaultRequestConfig(this.requestConfig); // 设置请求配置
 		builder.setRetryHandler(new DefaultHttpRequestRetryHandler(0,false));// 设置重试次数
 		loadProxy(builder, req.getURI().getScheme());
