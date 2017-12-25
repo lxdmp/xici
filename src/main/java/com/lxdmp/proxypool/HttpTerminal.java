@@ -132,23 +132,25 @@ public class HttpTerminal
 		return null;
 	}
 
-	public void addTemporaryProxy(Proxy proxy, String scheme)
+	public void addTemporaryProxy(Proxy proxy)
 	{
+		String scheme = proxy.getScheme();
 		if(scheme.compareTo("http")==0)
 			temporaryHttpProxy.addLast(proxy);
 		else if(scheme.compareTo("https")==0)
 			temporaryHttpsProxy.addLast(proxy);
 	}
 
-	public void setFixedProxy(Proxy proxy, String scheme)
+	public void setFixedProxy(Proxy proxy)
 	{
+		String scheme = proxy.getScheme();
 		if(scheme.compareTo("http")==0)
 			fixedHttpProxy = proxy;
 		else if(scheme.compareTo("https")==0)
 			fixedHttpsProxy = proxy;
 	}
 
-	public void resetFixedProxy(Proxy proxy, String scheme)
+	public void resetFixedProxy(String scheme)
 	{
 		if(scheme.compareTo("http")==0)
 			fixedHttpProxy = null;

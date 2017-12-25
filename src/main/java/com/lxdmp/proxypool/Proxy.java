@@ -7,14 +7,14 @@ public class Proxy
 {
 	private String ip;
 	private int port;
-	private String type; // "http"/"https"
+	private String scheme; // "http"/"https"
 	private String region;
 	private Date lastValidateTime;
 	private int speed; // [0, 100]
 
 	public String formatUrl()
 	{
-		return String.format("%s://%s:%d", type, ip, port);
+		return String.format("%s://%s:%d", scheme, ip, port);
 	}
 
 	@Override
@@ -22,7 +22,7 @@ public class Proxy
 	{
 		SimpleDateFormat f = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		return String.format("%s://%s:%d %s %s %d", 
-			this.type, this.ip, this.port, 
+			this.scheme, this.ip, this.port, 
 			this.region, f.format(this.lastValidateTime), this.speed);
 	}
 
@@ -65,17 +65,17 @@ public class Proxy
 		this.port = port;
 	}
 
-	String getType()
+	String getScheme()
 	{
-		return this.type;
+		return this.scheme;
 	}
 
-	void setType(String type) throws Exception
+	void setScheme(String scheme) throws Exception
 	{
-		if( type.compareTo("http")!=0 && 
-			type.compareTo("https")!=0 )
-			throw new Exception("Invalid type "+type);
-		this.type = type;
+		if( scheme.compareTo("http")!=0 && 
+			scheme.compareTo("https")!=0 )
+			throw new Exception("Invalid scheme "+scheme);
+		this.scheme = scheme;
 	}
 
 	String getRegion()
