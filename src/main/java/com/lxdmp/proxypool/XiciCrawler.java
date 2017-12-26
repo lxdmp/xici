@@ -12,16 +12,21 @@ import org.jsoup.select.*;
 public class XiciCrawler
 {
 	private static final String prefix = "http://www.xicidaili.com/nn";
-	private int page_idx = 1;
+	private int page_idx;
+	private int last_validate_interval; // 单位h
 	private HttpTerminal terminal = null;
 	private ConcurrentMap<Proxy, Date> http_buf = null, https_buf = null;
+	
+	private int http_added = 0, http_updated = 0, http_deleted = 0;
+	private int https_added = 0, https_updated = 0, https_deleted = 0;
 
-	public XiciCrawler()
+	public XiciCrawler(int last_validate_interval) throws Exception
 	{
 		terminal = new HttpTerminal();
 		terminal.setUsrAgent("Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:47.0) Gecko/20100101 Firefox/47.0");
 		http_buf=  new ConcurrentHashMap<Proxy, Date>();
 		https_buf=  new ConcurrentHashMap<Proxy, Date>();
+		this.last_validate_interval = last_validate_interval;
 	}
 
 	private String formatUrl()
@@ -133,13 +138,46 @@ public class XiciCrawler
 
 	public void update() throws Exception
 	{
-		Collection<Proxy> page_result = this.nextPage();
+		Collection<Proxy> proxys = null;
+
+		// 抓取网络数据
+		{
+			Calendar c = Calendar.getInstance();
+			c.set(Calendar.HOUR, c.get(Calendar.HOUR)-this.last_validate_interval);
+			Date t = c.getTime();
+			proxys = this.getWebPages(t);
+		}
+
+		if(proxys==null || proxys.isEmpty())
+			return;
+
+		this.resetStatistic();
+		
+		// 添加/更新获取到的数据
+		Iterator<Proxy> iter = proxys.iterator();
+		while(iter.hasNext())
+		{
+			Proxy proxy = iter.next();
+			this.tryAddProxy(proxy);
+		}
+
+		// 讲本次更新未覆盖到的数据删除
+		{
+			Calendar c = Calendar.getInstance();
+			c.set(Calendar.MINUTE, c.get(Calendar.MINUTE)-1);
+			Date t = c.getTime();
+			this.tryRemoveProxy(t);
+		}
+
+		System.out.println(this.logStatistic());
 	}
 
-	public Collection<Proxy> getWebPages(Date validate_after_this_stamp) throws Exception
+	// 获取在指定时间点后验证过的代理信息
+	private Collection<Proxy> getWebPages(Date validate_after_this_stamp) throws Exception
 	{
 		Collection<Proxy> ret = new LinkedList<Proxy>();
 		boolean timeout = false;
+		this.page_idx = 1;
 
 		do{
 			Collection<Proxy> page_result = this.nextPage();
@@ -191,6 +229,84 @@ public class XiciCrawler
 		else if(scheme.compareTo("https")==0)
 			return getRandomProxy(https_buf);
 		return null;
+	}
+
+	/*
+	 * 新增/更新/删除统计.
+	 */
+	private void resetStatistic()
+	{
+		http_added = 0; http_updated = 0; http_deleted = 0;
+		https_added = 0; https_updated = 0; https_deleted = 0;
+	}
+
+	private String logStatistic()
+	{
+		return String.format(
+			"http : %d added, %d updated, %d deleted, %d in total now;\nhttps : %d added, %d updated, %d deleted, %d in total now", 
+			http_added, http_updated, http_deleted, this.http_buf.size(), 
+			https_added, https_updated, https_deleted, this.https_buf.size()
+		);
+	}
+
+	private void tryAddProxy(Proxy proxy)
+	{
+		Date actual = Calendar.getInstance().getTime();
+		
+		if(proxy.getScheme().compareTo("http")==0)
+		{
+			if(this.http_buf.get(proxy)==null){
+				this.http_buf.put(proxy, actual);
+				http_added++;
+			}else{
+				this.http_buf.replace(proxy, actual);
+				http_updated++;
+			}
+		}
+		else if(proxy.getScheme().compareTo("https")==0)
+		{
+			if(this.https_buf.get(proxy)==null){
+				this.https_buf.put(proxy, actual);
+				https_added++;
+			}else{
+				this.https_buf.replace(proxy, actual);
+				https_updated++;
+			}
+		}
+	}
+
+	// 更新时戳早于stamp的将被删除
+	private void tryRemoveProxy(Date stamp)
+	{
+		LinkedList<Proxy> to_be_deleted = new LinkedList<Proxy>();
+		
+		for(Map.Entry<Proxy, Date> entry : this.http_buf.entrySet())
+		{
+			if(entry.getValue().before(stamp))
+				to_be_deleted.add(entry.getKey());
+		}
+		
+		for(Map.Entry<Proxy, Date> entry : this.https_buf.entrySet())
+		{
+			if(entry.getValue().before(stamp))
+				to_be_deleted.add(entry.getKey());
+		}
+
+		Iterator<Proxy> iter = to_be_deleted.iterator();
+		while(iter.hasNext())
+		{
+			Proxy proxy = iter.next();
+			if(proxy.getScheme().compareTo("http")==0)
+			{
+				http_deleted++;
+				this.http_buf.remove(proxy);
+			}
+			else if(proxy.getScheme().compareTo("https")==0)
+			{
+				https_deleted++;
+				this.https_buf.remove(proxy);
+			}
+		}
 	}
 }
 
