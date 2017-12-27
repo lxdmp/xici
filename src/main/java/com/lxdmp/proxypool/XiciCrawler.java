@@ -132,7 +132,11 @@ public class XiciCrawler
 				Proxy proxy_used = this.getRandomProxy(uri.getScheme());
 				if(proxy_used!=null)
 					terminal.addTemporaryProxy(proxy_used);
-				System.out.println(url);
+				
+				String log_str = url;
+				if(proxy_used!=null)
+					log_str += "("+proxy_used.formatUrl()+")";
+				System.out.println(log_str);
 			
 				String res = null;
 				res = terminal.sendHttpGet(url);

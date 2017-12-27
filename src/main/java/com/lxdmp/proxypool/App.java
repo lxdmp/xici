@@ -12,7 +12,7 @@ public class App
 			while(true)
 			{
 				crawler.update();
-				Thread.sleep(10*1000);
+				//Thread.sleep(10*1000);
 			}
 		}catch(Exception e){
 			e.printStackTrace();
