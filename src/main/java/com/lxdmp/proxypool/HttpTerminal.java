@@ -66,8 +66,8 @@ public class HttpTerminal
 			.register("https", sslsf).build();
 
 		this.pool = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
-		this.pool.setMaxTotal(10); // 将最大连接数增加到200，实际项目最好从配置文件中读取这个值
-		this.pool.setDefaultMaxPerRoute(2); // 设置最大路由
+		this.pool.setMaxTotal(10);
+		this.pool.setDefaultMaxPerRoute(2);
 		
 		// - 初始化请求配置
 		int socketTimeout = 10000;
@@ -170,95 +170,114 @@ public class HttpTerminal
 		return usrAgent;
 	}
 
-	private String sendHttpPost(HttpPost httpPost) throws Exception
+	private String sendHttpPost(HttpPost httpPost)
 	{
 		CloseableHttpClient httpClient = null;
 		CloseableHttpResponse response = null;
 		String responseContent = null;
 		
-		// 创建默认的httpClient实例.
-		httpClient = getHttpClient(httpPost);
-		// 配置请求信息
-		httpPost.setConfig(requestConfig);
-		// 执行请求
-		response = httpClient.execute(httpPost);
-		// 响应实例
-		HttpEntity entity = response.getEntity();
-		// 响应头
-		Header[] headers = response.getHeaders(HttpHeaders.CONTENT_TYPE);
-		if(trace)
-		{
-			for(Header header : headers)
-				System.out.println(header.getName());
-		}
-		
-		// 响应类型
-		if(trace)
-			System.out.println(ContentType.getOrDefault(response.getEntity()).getMimeType());
-
-		// 响应状态
-		if(response.getStatusLine().getStatusCode() >= 300)
-			throw new Exception("HTTP Request is not success, Response code is " + response.getStatusLine().getStatusCode());
-		if(HttpStatus.SC_OK==response.getStatusLine().getStatusCode())
-		{
-			responseContent = EntityUtils.toString(entity, CHARSET_UTF_8);
-			EntityUtils.consume(entity);
-		}
-
-		if(response != null)
-			response.close();
-
-		if(httpClient!=null)
-			httpClient.close();
-		
-		return responseContent;
-	}
-
-	private String sendHttpGet(HttpGet httpGet) throws Exception
-	{
-		CloseableHttpClient httpClient = null;
-		CloseableHttpResponse response = null;
-		String responseContent = null;
-		
-		// 创建默认的httpClient实例.
-		httpClient = getHttpClient(httpGet);
-		// 配置请求信息
-		httpGet.setConfig(requestConfig);
-		// 执行请求
-		response = httpClient.execute(httpGet);
-		// 得到响应实例
-		HttpEntity entity = response.getEntity();
-		// 响应头
-		Header[] headers = response.getHeaders(HttpHeaders.CONTENT_TYPE);
-		if(trace)
-		{
-			for(Header header : headers)
-				System.out.println(header.getName());
-		}
-
-		// 响应类型
-		if(trace)
-			System.out.println(ContentType.getOrDefault(response.getEntity()).getMimeType());
+		try{
+			// 创建默认的httpClient实例.
+			httpClient = getHttpClient(httpPost);
+			// 配置请求信息
+			httpPost.setConfig(requestConfig);
+			// 执行请求
+			response = httpClient.execute(httpPost);
+			// 响应实例
+			HttpEntity entity = response.getEntity();
+			// 响应头
+			Header[] headers = response.getHeaders(HttpHeaders.CONTENT_TYPE);
+			if(trace)
+			{
+				for(Header header : headers)
+					System.out.println(header.getName());
+			}
 			
-		// 响应状态
-		if(response.getStatusLine().getStatusCode() >= 300)
-			throw new Exception("HTTP Request is not success, Response code is " + response.getStatusLine().getStatusCode());
-		if(HttpStatus.SC_OK==response.getStatusLine().getStatusCode())
-		{
+			// 响应类型
+			if(trace)
+				System.out.println(ContentType.getOrDefault(response.getEntity()).getMimeType());
+	
+			// 响应状态
+			if(response.getStatusLine().getStatusCode()!=HttpStatus.SC_OK)
+				throw new Exception("HTTP Request is not success, Response code is " + response.getStatusLine().getStatusCode());
 			responseContent = EntityUtils.toString(entity, CHARSET_UTF_8);
 			EntityUtils.consume(entity);
+		}catch(Exception e){
+			System.out.println(e.getMessage());
+		}finally{
+			try{
+				if(response != null)
+					response.close();
+			}catch(IOException e){
+				e.printStackTrace();
+			}
+
+			try{
+				if(httpClient!=null)
+					httpClient.close();
+			}catch(IOException e){
+				e.printStackTrace();
+			}
 		}
-
-		if(response!=null)
-			response.close();
-
-		if(httpClient!=null)
-			httpClient.close();
 		
 		return responseContent;
 	}
 
-	public String sendHttpPost(String httpUrl) throws Exception
+	private String sendHttpGet(HttpGet httpGet)
+	{
+		CloseableHttpClient httpClient = null;
+		CloseableHttpResponse response = null;
+		String responseContent = null;
+		
+		try{
+			// 创建默认的httpClient实例.
+			httpClient = getHttpClient(httpGet);
+			// 配置请求信息
+			httpGet.setConfig(requestConfig);
+			// 执行请求
+			response = httpClient.execute(httpGet);
+			// 得到响应实例
+			HttpEntity entity = response.getEntity();
+			// 响应头
+			Header[] headers = response.getHeaders(HttpHeaders.CONTENT_TYPE);
+			if(trace)
+			{
+				for(Header header : headers)
+					System.out.println(header.getName());
+			}
+	
+			// 响应类型
+			if(trace)
+				System.out.println(ContentType.getOrDefault(response.getEntity()).getMimeType());
+			
+			// 响应状态
+			if(response.getStatusLine().getStatusCode()!=HttpStatus.SC_OK)
+				throw new Exception("HTTP Request is not success, Response code is " + response.getStatusLine().getStatusCode());
+		
+			responseContent = EntityUtils.toString(entity, CHARSET_UTF_8);
+			EntityUtils.consume(entity);
+		}catch(Exception e){
+			System.out.println(e.getMessage());
+		} finally {
+			try{
+				if(response!=null)
+					response.close();
+			}catch(IOException e){
+				e.printStackTrace();
+			}
+
+			try{
+				if(httpClient!=null)
+					httpClient.close();
+			}catch(IOException e){
+				e.printStackTrace();
+			}
+		}
+		
+		return responseContent;
+	}
+
+	public String sendHttpPost(String httpUrl)
 	{
 		HttpPost httpPost = new HttpPost(httpUrl);
 		if(usrAgent!=null)
@@ -266,7 +285,7 @@ public class HttpTerminal
 		return sendHttpPost(httpPost);
 	}
 	
-	public String sendHttpGet(String httpUrl) throws Exception
+	public String sendHttpGet(String httpUrl)
 	{
 		HttpGet httpGet = new HttpGet(httpUrl);
 		if(usrAgent!=null)
@@ -275,7 +294,7 @@ public class HttpTerminal
 	}
 
 	// post提交表单与文件
-	public String sendHttpPost(String httpUrl, Map<String, String> maps, List<File> fileLists) throws Exception
+	public String sendHttpPost(String httpUrl, Map<String, String> maps, List<File> fileLists)
 	{
 		HttpPost httpPost = new HttpPost(httpUrl);
 		MultipartEntityBuilder meBuilder = MultipartEntityBuilder.create();
@@ -298,7 +317,7 @@ public class HttpTerminal
 	}
 	
 	// post提交表单
-	public String sendHttpPost(String httpUrl, String params) throws Exception
+	public String sendHttpPost(String httpUrl, String params)
 	{
 		HttpPost httpPost = new HttpPost(httpUrl);
 		if(params!=null && params.trim().length()>0)
@@ -311,14 +330,14 @@ public class HttpTerminal
 	}
 	
 	// post提交表单
-	public String sendHttpPost(String httpUrl, Map<String, String> maps) throws Exception
+	public String sendHttpPost(String httpUrl, Map<String, String> maps)
 	{
 		String param = convertStringParamter(maps);
 		return sendHttpPost(httpUrl, param);
 	}
 	
 	// post提交json数据
-	public String sendHttpPostJson(String httpUrl, String paramsJson) throws Exception
+	public String sendHttpPostJson(String httpUrl, String paramsJson)
 	{
 		HttpPost httpPost = new HttpPost(httpUrl);
 		if(paramsJson!=null && paramsJson.trim().length()>0)
@@ -331,7 +350,7 @@ public class HttpTerminal
 	}
 	
 	// post提交xml
-	public String sendHttpPostXml(String httpUrl, String paramsXml) throws Exception
+	public String sendHttpPostXml(String httpUrl, String paramsXml)
 	{
 		HttpPost httpPost = new HttpPost(httpUrl);
 		if(paramsXml!=null && paramsXml.trim().length()>0)

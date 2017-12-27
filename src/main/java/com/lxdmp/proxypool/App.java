@@ -8,11 +8,11 @@ public class App
     public static void main(String[] args)
     {
 		try{
+			XiciCrawler crawler = new XiciCrawler(5);
 			while(true)
 			{
-				XiciCrawler crawler = new XiciCrawler(3);
 				crawler.update();
-				Thread.sleep(60*1000);
+				Thread.sleep(10*1000);
 			}
 		}catch(Exception e){
 			e.printStackTrace();

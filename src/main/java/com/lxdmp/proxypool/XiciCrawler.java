@@ -99,15 +99,18 @@ public class XiciCrawler
 	{
 		LinkedList<Proxy> ret = new LinkedList<Proxy>();
 		
-		Document doc = Jsoup.parse(res);
-		Element ip_tbl = doc.getElementById("ip_list");
-		Elements proxy_nodes = ip_tbl.getElementsByTag("tr");
-		for(Element proxy_node : proxy_nodes)
+		if(res!=null && res.length()>0)
 		{
-			if(proxy_node!=proxy_nodes.first())
+			Document doc = Jsoup.parse(res);
+			Element ip_tbl = doc.getElementById("ip_list");
+			Elements proxy_nodes = ip_tbl.getElementsByTag("tr");
+			for(Element proxy_node : proxy_nodes)
 			{
-				Proxy new_proxy = this.parseProxyNode(proxy_node);
-				ret.addLast(new_proxy);
+				if(proxy_node!=proxy_nodes.first())
+				{
+					Proxy new_proxy = this.parseProxyNode(proxy_node);
+					ret.addLast(new_proxy);
+				}
 			}
 		}
 
@@ -117,26 +120,45 @@ public class XiciCrawler
 			return ret;
 	}
 
-	private Collection<Proxy> getPage(String url) throws Exception
+	private Collection<Proxy> getPage(String url)
 	{
-		URI uri = new URI(url);
-		Proxy proxy_used = this.getRandomProxy(uri.getScheme());
-		if(proxy_used!=null)
-			terminal.addTemporaryProxy(proxy_used);
+		Collection<Proxy> ret = null;
+		boolean successed = false;
+		
+		while(!successed)
+		{
+			try{
+				URI uri = new URI(url);
+				Proxy proxy_used = this.getRandomProxy(uri.getScheme());
+				if(proxy_used!=null)
+					terminal.addTemporaryProxy(proxy_used);
+				System.out.println(url);
+			
+				String res = null;
+				res = terminal.sendHttpGet(url);
 
-		System.out.println(url);
-		String res = terminal.sendHttpGet(url);
-		return this.parsePage(res);
+				if(res==null || res.length()<=0)
+					continue;
+
+				ret = this.parsePage(res);
+				successed = true;
+			}catch(Exception e){
+				String s = e.getMessage();
+				System.out.println(s);
+			}
+		}
+		
+		return ret;
 	}
 
-	private Collection<Proxy> nextPage() throws Exception
+	private Collection<Proxy> nextPage()
 	{
 		Collection<Proxy> ret = getPage(this.formatUrl());
 		this.page_idx += 1;
 		return ret;
 	}
 
-	public void update() throws Exception
+	public void update()
 	{
 		Collection<Proxy> proxys = null;
 
@@ -173,7 +195,7 @@ public class XiciCrawler
 	}
 
 	// 获取在指定时间点后验证过的代理信息
-	private Collection<Proxy> getWebPages(Date validate_after_this_stamp) throws Exception
+	private Collection<Proxy> getWebPages(Date validate_after_this_stamp)
 	{
 		Collection<Proxy> ret = new LinkedList<Proxy>();
 		boolean timeout = false;
