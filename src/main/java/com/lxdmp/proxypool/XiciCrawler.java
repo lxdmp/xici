@@ -22,7 +22,7 @@ public class XiciCrawler
 
 	public XiciCrawler(int last_validate_interval) throws Exception
 	{
-		terminal = new HttpTerminal();
+		terminal = new HttpTerminal(5);
 		terminal.setUsrAgent("Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:47.0) Gecko/20100101 Firefox/47.0");
 		http_buf=  new ConcurrentHashMap<Proxy, Date>();
 		https_buf=  new ConcurrentHashMap<Proxy, Date>();

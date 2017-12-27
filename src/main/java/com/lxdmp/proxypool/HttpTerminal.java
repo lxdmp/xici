@@ -52,7 +52,7 @@ public class HttpTerminal
 	private LinkedList<Proxy> temporaryHttpProxy = new LinkedList<Proxy>();
 	private LinkedList<Proxy> temporaryHttpsProxy = new LinkedList<Proxy>();
 
-	public HttpTerminal() throws Exception
+	public HttpTerminal(int timeout_sec) throws Exception
 	{
 		// - 初始化连接管理器
 		
@@ -70,9 +70,9 @@ public class HttpTerminal
 		this.pool.setDefaultMaxPerRoute(2);
 		
 		// - 初始化请求配置
-		int socketTimeout = 10000;
-		int connectTimeout = 10000;
-		int connectionRequestTimeout = 10000;
+		int socketTimeout = timeout_sec*1000;
+		int connectTimeout = timeout_sec*1000;
+		int connectionRequestTimeout = timeout_sec*1000;
 		this.requestConfig = RequestConfig.custom()
 			.setConnectionRequestTimeout(connectionRequestTimeout)
 			.setSocketTimeout(socketTimeout)
